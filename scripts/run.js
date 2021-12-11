@@ -23,25 +23,47 @@ const DEFENSE_VALUES = [89, 77, 96, 98, 62]
 const PITCHING_VALUES = [83, 96, 62, 72, 50]
 
 const main = async () => {
-    const attributes = {
-
-    }
     const ipfs = await ipfsClient.create()
-    await createCharacterJson(ipfs, 1)
-    //const backyardBaseballContractFactory = await hre.ethers.getContractFactory("BackyardBaseball")
-    //const backyardBaseballContract = await backyardBaseballContractFactory.deploy()
-    //await backyardBaseballContract.deployed()
+    try {
+        await ipfs.files.mkdir("/backyard-baseball")
+    } catch {
+        await ipfs.files.rm("/backyard-baseball", {recursive: true})
+        await ipfs.files.mkdir("/backyard-baseball")
+        const stat = await ipfs.files.stat("/backyard-baseball")
+        console.log("created new directory")
+        console.log(stat)
+    }
 
-    //console.log("Backyard Baseball contract deployed to ", backyardBaseballContract.address)
+    await createCharacterJson(ipfs, 0)
+    await createCharacterJson(ipfs, 1)
+    await createCharacterJson(ipfs, 2)
+    await createCharacterJson(ipfs, 3)
+    const { cid: dirCID } = await ipfs.files.stat("/backyard-baseball")
+    console.log(dirCID)
+
+    const accounts = await hre.ethers.getSigners()
+    const account = accounts[0]
+    const backyardBaseballContractFactory = await hre.ethers.getContractFactory("BackyardBaseball")
+    const backyardBaseballContract = await backyardBaseballContractFactory.deploy()
+    await backyardBaseballContract.deployed()
+
+    console.log("Backyard Baseball contract deployed to ", backyardBaseballContract.address)
+    await backyardBaseballContract.setBaseURI(`ipfs://${dirCID.toString()}/`)
+    const baseURI = await backyardBaseballContract.baseURI()
+    console.log(baseURI)
+    // mint tokens
+    await backyardBaseballContract.mintCharacter(1)
+    // have another account buy nft
+    const tokenURI = await backyardBaseballContract.tokenURI(0)
+    console.log(tokenURI)
 }
 
 const createCharacterJson = async (ipfs, idx) => {
     const imagePath = `./assets/images/${IMAGE_NAMES[idx]}`
     const imageCID = await uploadToIPFS.uploadFileToIPFS(ipfs, idx, imagePath)
-    console.log(imageCID)
     const imageURI = `ipfs://${imageCID}`
 
-    attributes = {
+    const attributes = {
         name: NAMES[idx],
         image: imageURI,
         speed: SPEED_VALUES[idx],
@@ -49,9 +71,9 @@ const createCharacterJson = async (ipfs, idx) => {
         defense: DEFENSE_VALUES[idx],
         pitching: PITCHING_VALUES[idx]
     }
+    const jsonAttributes = JSON.stringify(attributes)
 
-    console.log(attributes)
-    uploadToIPFS.generateNFTJson(idx, attributes)
+    await ipfs.files.write(`/backyard-baseball/${idx}`, jsonAttributes, {create: true})
 }
 
 const runMain = async () => {

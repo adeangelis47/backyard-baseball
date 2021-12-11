@@ -2,9 +2,9 @@ const axios = require("axios")
 const fs = require("fs")
 const FormData = require("form-data")
 
-const uploadFileToIPFS = async (ipfs, idx, filePath) => {
+const uploadFileToIPFS = async (ipfs, ipfsPath, filePath) => {
     const content = fs.createReadStream(filePath)
-    const { cid: nftCID } = await ipfs.add({path: idx, filePath})
+    const { cid: nftCID } = await ipfs.add({path: ipfsPath, content})
 
     return nftCID
 }
@@ -12,7 +12,7 @@ const uploadFileToIPFS = async (ipfs, idx, filePath) => {
 const generateNFTJson = (idx, attributes) => {
     // write json data to ./assets/nftJson
     const data = JSON.stringify(attributes)
-    fs.writeFileSync(`./assets/nftJson/${idx}.json`, data)
+    fs.writeFileSync(`./assets/nftJson/${idx}`, data)
 }
 
 const uploadFileToPinata = (idx, file) => {
